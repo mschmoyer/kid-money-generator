@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SchmoBucks Sheet Maker</title>
+<style>
+  :root{
+    --ink:#21352c;
+    --muted:#68736d;
+    --line:#d8ded9;
+    --panel:#ffffff;
+    --cut:#9a9a9a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#eef1ed;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  button,input{font:inherit}
+  .app{display:grid;grid-template-columns:minmax(320px,430px) 1fr;min-height:100vh}
+  .controls{
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    padding:24px;
+    overflow:auto;
+    height:100vh;
+    position:sticky;
+    top:0;
+  }
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .seal{
+    width:42px;height:42px;border-radius:50%;
+    border:2px solid #8ea294;
+    display:grid;place-items:center;
+    font-family:Georgia,serif;font-weight:800;font-size:22px;
+    background:#fff;
+  }
+  h1{font-family:Georgia,"Times New Roman",serif;font-size:28px;line-height:1;margin:0;letter-spacing:.02em}
+  .subtitle{color:var(--muted);font-size:13px;line-height:1.45;margin:0 0 22px}
+  .section{border-top:1px solid var(--line);padding-top:18px;margin-top:18px}
+  .section h2{font-size:13px;text-transform:uppercase;letter-spacing:.13em;margin:0 0 10px;color:#52635a}
+  .field{display:grid;gap:7px;margin:12px 0}
+  .field label{font-weight:700;font-size:13px}
+  .hint{font-size:12px;color:var(--muted);line-height:1.35}
+  .warning{font-size:12px;color:#6d4b16;background:#fff7e8;border:1px solid #ead3aa;border-radius:8px;padding:9px 10px;margin-top:10px}
+  input[type=file]{width:100%;font-size:12px}
+  .filebox{border:1px dashed #aebbb2;border-radius:10px;padding:12px;background:#f8faf8}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .compact label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+  input[type=range]{width:100%}
+  .denom-card{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#fbfcfb}
+  .denom-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .denom-title{font-family:Georgia,serif;font-weight:800;font-size:20px}
+  .count{font-size:11px;color:var(--muted);background:#edf2ee;padding:4px 7px;border-radius:999px}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+  .actions .primary{grid-column:1/-1}
+  button{
+    border:1px solid #9aa99f;border-radius:9px;padding:10px 12px;
+    background:white;color:var(--ink);font-weight:800;cursor:pointer;
+  }
+  button:hover{background:#f3f6f3}
+  button.primary{background:#294b3a;color:white;border-color:#294b3a;font-size:15px}
+  button.primary:hover{background:#1f3d2e}
+  .workspace{padding:28px;overflow:auto}
+  .toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 auto 14px;max-width:11in}
+  .toolbar strong{font-family:Georgia,serif;font-size:18px}
+  .toolbar span{font-size:12px;color:var(--muted)}
+  .page-stack{display:grid;gap:28px}
+  .page-label{max-width:11in;margin:0 auto 8px;font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .page-wrap{display:flex;justify-content:center;align-items:flex-start}
+  .paper{
+    width:11in;height:8.5in;background:white;position:relative;
+    box-shadow:0 10px 35px rgba(35,55,42,.18);
+    overflow:hidden;flex:none;
+  }
+
+  .sheet{
+    position:absolute;left:0;top:0;width:11in;height:8.5in;
+    display:grid;grid-template-columns:repeat(2,5.5in);grid-template-rows:repeat(3,2.8333333in);
+  }
+  .bill{position:relative;width:5.5in;height:2.8333333in;overflow:hidden;background:#fff}
+  .bill canvas{display:block;width:5.5in;height:2.8333333in}
+
+  .guide{position:absolute;pointer-events:none;background:var(--cut);z-index:30}
+  .guide.v{top:0;bottom:0;width:1px;left:5.5in}
+  .guide.h{left:0;right:0;height:1px}
+  .g1{top:2.8333333in}
+  .g2{top:5.6666667in}
+
+  .status{font-size:12px;color:var(--muted);margin-top:9px}
+  .smallcheck{display:flex;align-items:flex-start;gap:9px}
+  .smallcheck input{margin-top:2px}
+
+  @media screen and (max-width:1220px){
+    .app{grid-template-columns:1fr}
+    .controls{height:auto;position:relative;border-right:0;border-bottom:1px solid var(--line)}
+    .workspace{padding:18px}
+    .paper{transform:scale(.8);transform-origin:top center}
+  }
+  @media print{
+    @page{size:letter landscape;margin:0}
+    html,body{background:white;margin:0;padding:0}
+    .controls,.toolbar,.page-label{display:none!important}
+    .app,.workspace,.page-stack,.page-wrap{display:block!important;margin:0!important;padding:0!important}
+    .paper{
+      width:11in!important;
+      height:8.5in!important;
+      box-shadow:none!important;
+      margin:0!important;
+      transform:none!important;
+      transform-origin:initial!important;
+      page-break-after:always;
+      break-after:page
+    }
+    .paper:last-child{page-break-after:auto;break-after:auto}
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="controls">
+    <div class="brand">
+      <div class="seal">$</div>
+      <div><h1>SchmoBucks</h1></div>
+    </div>
+    <p class="subtitle">Build printable front-and-back family play money. This version prints <b>6 large bills</b> on a <b>full 8.5 × 11 landscape page</b>, with only internal grey cut lines. The bills themselves are drawn large in the HTML, and the backdrop/portrait art scales with them.</p>
+
+    <section class="section">
+      <h2>1. Bill artwork</h2>
+      <div class="field">
+        <label>Front bill backdrop PNG</label>
+        <div class="filebox">
+          <input id="backdropFile" type="file" accept="image/png,image/webp,image/jpeg" />
+          <img id="backdropThumb" alt="" style="display:none;width:100%;margin-top:10px;border:1px solid #cfd8d1;border-radius:6px;background:#fff">
+          <div id="backdropLoaded" class="hint" style="margin-top:7px">Checking for default front file...</div>
+          <div class="hint">If present in the same folder, the app auto-loads <b>bill-front-white.png</b>. Uploading a file overrides it.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Back-of-bill backdrop PNG</label>
+        <div class="filebox">
+          <input id="backdropBackFile" type="file" accept="image/png,image/webp,image/jpeg" />
+          <img id="backdropBackThumb" alt="" style="display:none;width:100%;margin-top:10px;border:1px solid #cfd8d1;border-radius:6px;background:#fff">
+          <div id="backdropBackLoaded" class="hint" style="margin-top:7px">Checking for default back file...</div>
+          <div class="hint">If present in the same folder, the app auto-loads <b>bill-front-back.png</b>. Uploading a file overrides it.</div>
+        </div>
+      </div>
+
+      <div class="warning">
+        The portrait layer is normally rendered <b>behind</b> your front backdrop. For the photo to show through the center oval, that part of the front backdrop should be transparent.
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2. Portrait placement</h2>
+      <div class="field">
+        <label>Portrait opening</label>
+        <div class="hint">These values define the center-photo area as a percentage of the artwork area inside each bill.</div>
+      </div>
+      <div class="row2">
+        <div class="compact"><label>Left %</label><input id="clipX" type="number" value="35" min="0" max="90" step=".5"></div>
+        <div class="compact"><label>Top %</label><input id="clipY" type="number" value="15" min="0" max="90" step=".5"></div>
+        <div class="compact"><label>Width %</label><input id="clipW" type="number" value="30" min="5" max="90" step=".5"></div>
+        <div class="compact"><label>Height %</label><input id="clipH" type="number" value="70" min="5" max="90" step=".5"></div>
+      </div>
+      <div class="field smallcheck">
+        <input id="ovalClip" type="checkbox" checked>
+        <label for="ovalClip">Clip portrait to an oval</label>
+      </div>
+      <div class="field smallcheck">
+        <input id="moneyTint" type="checkbox" checked>
+        <label for="moneyTint">Apply money-green monochrome tint</label>
+      </div>
+      <div class="field smallcheck">
+        <input id="portraitOnTop" type="checkbox">
+        <label for="portraitOnTop">Draw portrait above the front backdrop</label>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. Denominations</h2>
+      <div class="hint">This sheet prints exactly: <b>three $1 bills, one $5 bill, one $10 bill, and one $20 bill</b>.</div>
+      <div id="denominationControls"></div>
+    </section>
+
+    <section class="section">
+      <h2>4. Number placement</h2>
+      <div class="hint">The denomination text is drawn into the corner frames on both front and back, positioned relative to the inset artwork area. The artwork inset is intentionally small so the printed bills feel larger.</div>
+      <div class="row2">
+        <div class="compact"><label>Left box X %</label><input id="numLX" type="number" value="8.5" step=".5"></div>
+        <div class="compact"><label>Left box Y %</label><input id="numLY" type="number" value="24" step=".5"></div>
+        <div class="compact"><label>Right box X %</label><input id="numRX" type="number" value="91.5" step=".5"></div>
+        <div class="compact"><label>Right box Y %</label><input id="numRY" type="number" value="24" step=".5"></div>
+        <div class="compact"><label>Bottom-left X %</label><input id="numBLX" type="number" value="8.5" step=".5"></div>
+        <div class="compact"><label>Bottom-left Y %</label><input id="numBLY" type="number" value="78" step=".5"></div>
+        <div class="compact"><label>Bottom-right X %</label><input id="numBRX" type="number" value="91.5" step=".5"></div>
+        <div class="compact"><label>Bottom-right Y %</label><input id="numBRY" type="number" value="78" step=".5"></div>
+      </div>
+      <div class="row2">
+        <div class="compact"><label>Number size % of art height</label><input id="numSize" type="number" value="23" min="5" max="60" step="1"></div>
+        <div class="compact"><label>Number ink</label><input id="numColor" type="color" value="#294b3a" style="width:100%;height:35px;border:0;background:transparent"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>5. Duplex options</h2>
+      <div class="field smallcheck">
+        <input id="mirrorBack" type="checkbox" checked>
+        <label for="mirrorBack">Mirror back page left/right so denomination-specific backs line up</label>
+      </div>
+      <div class="field smallcheck">
+        <input id="rotateBack" type="checkbox">
+        <label for="rotateBack">Rotate each back bill 180°</label>
+      </div>
+      <div class="hint">Recommended print setting: <b>two-sided / duplex</b>, <b>Actual Size / 100%</b>, and usually <b>flip on short edge</b> for landscape pages. The back page is mirrored left/right by default so denomination-specific backs match the correct fronts.</div>
+    </section>
+
+    <div class="actions">
+      <button id="resetBtn">Reset positioning</button>
+      <button id="refreshBtn">Refresh preview</button>
+      <button id="printBtn" class="primary">Print Front + Back Pages</button>
+    </div>
+    <div id="status" class="status">Checking for bill-front-white.png and bill-front-back.png in this folder...</div>
+  </aside>
+
+  <main class="workspace">
+    <div class="toolbar">
+      <div><strong>US Letter Landscape Print Preview</strong><br><span>11 × 8.5 in • 2 × 3 bills • true 100% full-page layout with internal cut lines only</span></div>
+      <span>Back page is mirrored by default so denomination-specific backs align with fronts.</span>
+    </div>
+
+    <div class="page-stack">
+      <div>
+        <div class="page-label">Page 1 — Fronts</div>
+        <div class="page-wrap">
+          <div class="paper">
+            <div class="sheet" id="sheetFront"></div>
+            <div class="guide v"></div>
+            <div class="guide h g1"></div>
+            <div class="guide h g2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="page-label">Page 2 — Backs</div>
+        <div class="page-wrap">
+          <div class="paper">
+            <div class="sheet" id="sheetBack"></div>
+            <div class="guide v"></div>
+            <div class="guide h g1"></div>
+            <div class="guide h g2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const BILL_W = 1650; // 5.5 in at 300 dpi
+  const BILL_H = 850;  // 2.833333 in at 300 dpi
+  const ART_PAD_X = 0.02; // white edge inside each bill, kept small so the artwork prints larger
+  const ART_PAD_Y = 0.03;
+
+  const DENOMS = [
+    {value:1, count:3, label:'1'},
+    {value:5, count:1, label:'5'},
+    {value:10, count:1, label:'10'},
+    {value:20, count:1, label:'20'}
+  ];
+  const BILL_ORDER = [1,1,1,5,10,20];
+
+  const state = {
+    backdrop:null,
+    backdropBack:null,
+    portraits:{},
+    portraitSettings:{}
+  };
+
+  const $ = id => document.getElementById(id);
+  const controls = $('denominationControls');
+  const sheetFront = $('sheetFront');
+  const sheetBack = $('sheetBack');
+  const status = $('status');
+
+  function defaultPortraitSettings(){
+    return {zoom:1, x:0, y:0};
+  }
+
+  function getBackOrder(){
+    if(!$('mirrorBack').checked) return [...BILL_ORDER];
+    const out = [];
+    for(let i=0;i<BILL_ORDER.length;i+=2){
+      out.push(BILL_ORDER[i+1], BILL_ORDER[i]);
+    }
+    return out;
+  }
+
+  function getArtRect(w,h){
+    const x = w * ART_PAD_X;
+    const y = h * ART_PAD_Y;
+    const aw = w * (1 - ART_PAD_X*2);
+    const ah = h * (1 - ART_PAD_Y*2);
+    return {x,y,w:aw,h:ah};
+  }
+
+  function createControlCards(){
+    DENOMS.forEach(d => {
+      state.portraitSettings[d.value] = defaultPortraitSettings();
+      const card = document.createElement('div');
+      card.className = 'denom-card';
+      card.innerHTML = `
+        <div class="denom-head">
+          <div class="denom-title">$${d.label}</div>
+          <div class="count">${d.count} bill${d.count>1?'s':''}</div>
+        </div>
+        <div class="field">
+          <div class="filebox">
+            <input type="file" data-portrait="${d.value}" accept="image/png,image/jpeg,image/webp" />
+            <img data-thumb="${d.value}" alt="" style="display:none;width:100%;max-height:110px;object-fit:cover;margin-top:9px;border:1px solid #cfd8d1;border-radius:6px">
+            <div data-loaded="${d.value}" class="hint" style="margin-top:6px">No portrait loaded.</div>
+            <div class="hint">Upload the center image for every $${d.label} bill.</div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="compact">
+            <label>Zoom</label>
+            <input type="range" data-setting="zoom" data-denom="${d.value}" min="0.6" max="3" step=".02" value="1">
+          </div>
+          <div class="compact">
+            <label>Horizontal</label>
+            <input type="range" data-setting="x" data-denom="${d.value}" min="-100" max="100" step="1" value="0">
+          </div>
+          <div class="compact">
+            <label>Vertical</label>
+            <input type="range" data-setting="y" data-denom="${d.value}" min="-100" max="100" step="1" value="0">
+          </div>
+        </div>
+      `;
+      controls.appendChild(card);
+    });
+  }
+
+  function buildSheets(){
+    sheetFront.innerHTML = '';
+    BILL_ORDER.forEach((denom, i) => {
+      const holder = document.createElement('div');
+      holder.className = 'bill';
+      const c = document.createElement('canvas');
+      c.width = BILL_W;
+      c.height = BILL_H;
+      c.dataset.denom = denom;
+      c.dataset.index = i;
+      c.dataset.side = 'front';
+      holder.appendChild(c);
+      sheetFront.appendChild(holder);
+    });
+
+    sheetBack.innerHTML = '';
+    getBackOrder().forEach((denom, i) => {
+      const holder = document.createElement('div');
+      holder.className = 'bill';
+      const c = document.createElement('canvas');
+      c.width = BILL_W;
+      c.height = BILL_H;
+      c.dataset.denom = denom;
+      c.dataset.index = i;
+      c.dataset.side = 'back';
+      holder.appendChild(c);
+      sheetBack.appendChild(holder);
+    });
+  }
+
+  function readImage(file){
+    return new Promise((resolve,reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Could not decode image'));
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadImageFromURL(url){
+    return new Promise((resolve,reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Could not load image URL'));
+      img.src = url;
+    });
+  }
+
+  async function tryLoadDefaultAssets(){
+    let loadedAny = false;
+
+    try{
+      const img = await loadImageFromURL('bill-front-white.png');
+      state.backdrop = img;
+      $('backdropThumb').src = img.src;
+      $('backdropThumb').style.display = 'block';
+      $('backdropLoaded').innerHTML = 'Loaded default front: <b>bill-front-white.png</b> • ' + img.naturalWidth + '×' + img.naturalHeight + 'px';
+      loadedAny = true;
+    }catch(err){
+      $('backdropLoaded').textContent = 'No default front found. Upload a front backdrop, or place bill-front-white.png beside this HTML file.';
+    }
+
+    try{
+      const img = await loadImageFromURL('bill-front-back.png');
+      state.backdropBack = img;
+      $('backdropBackThumb').src = img.src;
+      $('backdropBackThumb').style.display = 'block';
+      $('backdropBackLoaded').innerHTML = 'Loaded default back: <b>bill-front-back.png</b> • ' + img.naturalWidth + '×' + img.naturalHeight + 'px';
+      loadedAny = true;
+    }catch(err){
+      $('backdropBackLoaded').textContent = 'No default back found. Upload a back design, or place bill-front-back.png beside this HTML file.';
+    }
+
+    render();
+
+    if(loadedAny){
+      status.textContent = 'Loaded local default backdrop file(s). Uploads will override them.';
+    }else{
+      status.textContent = 'Ready. No local default backdrops found, so please upload your front and/or back images.';
+    }
+  }
+
+  function val(id){ return parseFloat($(id).value || 0); }
+
+  function fitCover(img, dx,dy,dw,dh, settings){
+    const iw=img.naturalWidth, ih=img.naturalHeight;
+    const base=Math.max(dw/iw, dh/ih);
+    const scale=base*settings.zoom;
+    const sw=iw*scale, sh=ih*scale;
+    return {
+      x: dx+(dw-sw)/2 + (settings.x/100)*dw,
+      y: dy+(dh-sh)/2 + (settings.y/100)*dh,
+      w: sw, h: sh
+    };
+  }
+
+  function drawPlaceholderText(ctx, w, h, line1, line2){
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,w,h);
+    ctx.fillStyle = '#294b3a';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${Math.round(h*.12)}px Georgia, serif`;
+    ctx.fillText(line1, w/2, h*.42);
+    ctx.fillStyle = '#6c7b72';
+    ctx.font = `600 ${Math.round(h*.05)}px Georgia, serif`;
+    ctx.fillText(line2, w/2, h*.58);
+  }
+
+  function drawImageInRect(ctx, img, rect){
+    ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
+  }
+
+  function drawPortrait(ctx, art, denom){
+    const img=state.portraits[denom];
+    if(!img) return;
+    const x=art.x + art.w*val('clipX')/100;
+    const y=art.y + art.h*val('clipY')/100;
+    const cw=art.w*val('clipW')/100;
+    const ch=art.h*val('clipH')/100;
+    const settings=state.portraitSettings[denom] || defaultPortraitSettings();
+    const r=fitCover(img,x,y,cw,ch,settings);
+
+    ctx.save();
+    if($('ovalClip').checked){
+      ctx.beginPath();
+      ctx.ellipse(x+cw/2,y+ch/2,cw/2,ch/2,0,0,Math.PI*2);
+      ctx.clip();
+    }else{
+      ctx.beginPath();
+      ctx.rect(x,y,cw,ch);
+      ctx.clip();
+    }
+
+    ctx.drawImage(img,r.x,r.y,r.w,r.h);
+
+    if($('moneyTint').checked){
+      ctx.globalCompositeOperation='color';
+      ctx.fillStyle='#597461';
+      ctx.fillRect(x,y,cw,ch);
+      ctx.globalCompositeOperation='multiply';
+      ctx.fillStyle='rgba(45,75,57,.18)';
+      ctx.fillRect(x,y,cw,ch);
+      ctx.globalCompositeOperation='screen';
+      ctx.fillStyle='rgba(255,255,255,.10)';
+      ctx.fillRect(x,y,cw,ch);
+    }
+    ctx.restore();
+  }
+
+  function drawNumbers(ctx, art, denom){
+    const ink=$('numColor').value;
+    const baseFs=art.h*val('numSize')/100;
+    const preset = {
+      1:   {inset: 3.2, scale: 1.00, condense: 1.00},
+      5:   {inset: 3.2, scale: 1.00, condense: 1.00},
+      10:  {inset: 1.6, scale: 0.94, condense: 0.98},
+      20:  {inset: 1.6, scale: 0.94, condense: 0.98},
+      100: {inset: 1.5, scale: 0.72, condense: 0.72}
+    }[denom] || {inset:0, scale:1, condense:1};
+
+    const fs=baseFs*preset.scale;
+    const points=[
+      [val('numLX')  + preset.inset, val('numLY')],
+      [val('numRX')  - preset.inset, val('numRY')],
+      [val('numBLX') + preset.inset, val('numBLY')],
+      [val('numBRX') - preset.inset, val('numBRY')]
+    ];
+
+    ctx.save();
+    ctx.fillStyle=ink;
+    ctx.strokeStyle='rgba(255,255,255,.55)';
+    ctx.lineWidth=Math.max(1,fs*.025);
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.font=`900 ${fs}px Georgia, "Times New Roman", serif`;
+
+    for(const [px,py] of points){
+      const x=art.x + art.w*px/100;
+      const y=art.y + art.h*py/100;
+      ctx.save();
+      ctx.translate(x,y);
+      ctx.scale(preset.condense,1);
+      ctx.strokeText(String(denom),0,0);
+      ctx.fillText(String(denom),0,0);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawFrontBill(canvas){
+    const ctx=canvas.getContext('2d');
+    const w=canvas.width,h=canvas.height;
+    const denom=Number(canvas.dataset.denom);
+    const art = getArtRect(w,h);
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle='#ffffff';
+    ctx.fillRect(0,0,w,h);
+
+    if(!state.backdrop){
+      drawPlaceholderText(ctx,w,h,'SCHMOBUCKS FRONT','Upload or auto-load your front backdrop');
+      return;
+    }
+
+    if($('portraitOnTop').checked){
+      drawImageInRect(ctx, state.backdrop, art);
+      drawPortrait(ctx, art, denom);
+    }else{
+      drawPortrait(ctx, art, denom);
+      drawImageInRect(ctx, state.backdrop, art);
+    }
+    drawNumbers(ctx, art, denom);
+  }
+
+  function renderBackCore(ctx,w,h,denom){
+    const art = getArtRect(w,h);
+    ctx.fillStyle='#ffffff';
+    ctx.fillRect(0,0,w,h);
+
+    if(!state.backdropBack){
+      drawPlaceholderText(ctx,w,h,'SCHMOBUCKS BACK','Upload or auto-load your back backdrop');
+      return;
+    }
+
+    drawImageInRect(ctx, state.backdropBack, art);
+    drawNumbers(ctx, art, denom);
+  }
+
+  function drawBackBill(canvas){
+    const ctx=canvas.getContext('2d');
+    const w=canvas.width,h=canvas.height;
+    const denom=Number(canvas.dataset.denom);
+    ctx.clearRect(0,0,w,h);
+
+    if($('rotateBack').checked){
+      ctx.save();
+      ctx.translate(w,h);
+      ctx.rotate(Math.PI);
+      renderBackCore(ctx,w,h,denom);
+      ctx.restore();
+    }else{
+      renderBackCore(ctx,w,h,denom);
+    }
+  }
+
+  function render(){
+    buildSheets();
+    sheetFront.querySelectorAll('canvas').forEach(drawFrontBill);
+    sheetBack.querySelectorAll('canvas').forEach(drawBackBill);
+  }
+
+  function debounce(fn,ms=60){
+    let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args),ms); }
+  }
+  const rerender = debounce(render);
+
+  $('backdropFile').addEventListener('change', async e => {
+    const file=e.target.files[0];
+    if(!file) return;
+    status.textContent='Loading front backdrop...';
+    try{
+      state.backdrop=await readImage(file);
+      $('backdropThumb').src=state.backdrop.src;
+      $('backdropThumb').style.display='block';
+      $('backdropLoaded').textContent=`Loaded: ${file.name} • ${state.backdrop.naturalWidth}×${state.backdrop.naturalHeight}px`;
+      status.textContent=`Front backdrop loaded: ${file.name}`;
+      render();
+    }catch(err){
+      console.error(err);
+      $('backdropLoaded').textContent='Front backdrop failed to load.';
+      status.textContent='Could not read that front backdrop image. Try PNG, JPG, or WEBP.';
+    }
+  });
+
+  $('backdropBackFile').addEventListener('change', async e => {
+    const file=e.target.files[0];
+    if(!file) return;
+    status.textContent='Loading back design...';
+    try{
+      state.backdropBack=await readImage(file);
+      $('backdropBackThumb').src=state.backdropBack.src;
+      $('backdropBackThumb').style.display='block';
+      $('backdropBackLoaded').textContent=`Loaded: ${file.name} • ${state.backdropBack.naturalWidth}×${state.backdropBack.naturalHeight}px`;
+      status.textContent=`Back design loaded: ${file.name}`;
+      render();
+    }catch(err){
+      console.error(err);
+      $('backdropBackLoaded').textContent='Back design failed to load.';
+      status.textContent='Could not read that back design image. Try PNG, JPG, or WEBP.';
+    }
+  });
+
+  controls.addEventListener('change', async e => {
+    if(e.target.matches('input[type=file][data-portrait]')){
+      const denom=Number(e.target.dataset.portrait);
+      const file=e.target.files[0];
+      if(!file) return;
+      status.textContent=`Loading $${denom} portrait...`;
+      try{
+        state.portraits[denom]=await readImage(file);
+        const thumb=controls.querySelector(`[data-thumb="${denom}"]`);
+        const loaded=controls.querySelector(`[data-loaded="${denom}"]`);
+        if(thumb){
+          thumb.src=state.portraits[denom].src;
+          thumb.style.display='block';
+        }
+        if(loaded){
+          loaded.textContent=`Loaded: ${file.name} • ${state.portraits[denom].naturalWidth}×${state.portraits[denom].naturalHeight}px`;
+        }
+        status.textContent=`$${denom} portrait loaded: ${file.name}`;
+        render();
+      }catch(err){
+        console.error(err);
+        const loaded=controls.querySelector(`[data-loaded="${denom}"]`);
+        if(loaded) loaded.textContent='Portrait failed to load.';
+        status.textContent=`Could not read the $${denom} portrait image. Try PNG, JPG, or WEBP.`;
+      }
+    }
+  });
+
+  controls.addEventListener('input', e => {
+    if(e.target.dataset.setting){
+      const denom=Number(e.target.dataset.denom);
+      state.portraitSettings[denom][e.target.dataset.setting]=parseFloat(e.target.value);
+      rerender();
+    }
+  });
+
+  document.querySelectorAll(
+    '#clipX,#clipY,#clipW,#clipH,#ovalClip,#moneyTint,#portraitOnTop,#numLX,#numLY,#numRX,#numRY,#numBLX,#numBLY,#numBRX,#numBRY,#numSize,#numColor,#mirrorBack,#rotateBack'
+  ).forEach(el => el.addEventListener('input', rerender));
+
+  $('refreshBtn').addEventListener('click', render);
+
+  $('printBtn').addEventListener('click', () => {
+    render();
+    status.textContent='Opening print dialog. Use Actual Size / 100%. The responsive 80% preview scaling is explicitly disabled for print.';
+    setTimeout(()=>window.print(), 100);
+  });
+
+  $('resetBtn').addEventListener('click', () => {
+    $('clipX').value=35; $('clipY').value=15; $('clipW').value=30; $('clipH').value=70;
+    $('numLX').value=8.5; $('numLY').value=24; $('numRX').value=91.5; $('numRY').value=24;
+    $('numBLX').value=8.5; $('numBLY').value=78; $('numBRX').value=91.5; $('numBRY').value=78;
+    $('numSize').value=23; $('numColor').value='#294b3a';
+    $('ovalClip').checked=true; $('moneyTint').checked=true; $('portraitOnTop').checked=false;
+    $('mirrorBack').checked=true; $('rotateBack').checked=false;
+    DENOMS.forEach(d => {
+      state.portraitSettings[d.value]=defaultPortraitSettings();
+      controls.querySelectorAll(`[data-denom="${d.value}"]`).forEach(el => {
+        if(el.dataset.setting==='zoom') el.value=1;
+        if(el.dataset.setting==='x' || el.dataset.setting==='y') el.value=0;
+      });
+    });
+    render();
+    status.textContent='Positioning reset. Preview refreshed. Bills are sized directly in the HTML with no page-scaling transform.';
+  });
+
+  createControlCards();
+  render();
+  tryLoadDefaultAssets();
+})();
+</script>
+</body>
+</html>
